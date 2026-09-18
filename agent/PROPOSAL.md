@@ -1,52 +1,129 @@
 Proposal: Personal Fitness Tracker
 
-Data model (main entities)
-1) Workout
-- id (UUID): unique identifier
-- date (Date): date/time of workout (default: now, editable)
-- notes (String, optional): overall workout notes
-- exercises (to-many relationship -> Exercise)
+## Technology Stack
+- Python 3.10+
+- Tkinter/ttk for the Windows desktop interface
+- SQLite via the standard-library `sqlite3` module
+- `pathlib` and `shutil` for local image files
+- No external dependencies in the first milestone
 
-2) Exercise
-- id (UUID)
-- name (String): exercise name ("Bench Press")
-- bodyPart (String, optional): e.g., "Chest", "Legs"
-- notes (String, optional)
-- sets (to-many relationship -> ExerciseSet)
-- workout (inverse to-one relationship -> Workout)
+The application will use a small layered structure: UI screens call application services, services validate input and coordinate operations, and repositories own SQLite queries. This keeps future web or Pythonista clients from depending on Tkinter details.
 
-3) ExerciseSet
-- id (UUID)
-- index (Int16): set number/order within exercise
-- reps (Int16, optional): reps completed
-- weight (Double, optional): weight used (if applicable)
-- notes (String, optional)
-- exercise (inverse relationship -> Exercise)
+## Folder Structure
 
-4) Bodyweight (separate entity for daily weight logs)
-- id (UUID)
-- date (Date)
-- weight (Double)
-- notes (String, optional)
+```text
+src/fitness_tracker/
+	__init__.py
+	app.py
+	config.py
+	models.py
+	database.py
+	repositories/
+		__init__.py
+		workout_repository.py
+		bodyweight_repository.py
+	services/
+		__init__.py
+		workout_service.py
+		bodyweight_service.py
+	storage/
+		__init__.py
+		attachments.py
+	ui/
+		__init__.py
+		main_window.py
+		workout_entry.py
+		workout_history.py
+		bodyweight_entry.py
+		exercise_history.py
+tests/
+	test_workouts.py
+	test_bodyweight.py
+```
 
-5) ImageAttachment
-- id (UUID)
-- filename (String): filename within Documents
-- mimeType (String, optional)
-- notes (String, optional)
-- (relationship optional) linkedToExercise | linkedToWorkout | linkedToBodyweight
+The implementation should add modules only as the related feature is built.
 
-Relationships and design notes
-- A `Workout` contains many `Exercise` objects; each `Exercise` has ordered `ExerciseSet` children.
-- Images are stored as files; Core Data stores lightweight metadata and file URL/filename to keep DB small.
-- Keep types simple (Strings for `bodyPart`) to avoid over-normalization; later we can extract a BodyPart enum table if needed.
-- Add lightweight indexing on `Exercise.name` and `Workout.date` for fast queries.
+## Data Model
 
-Main screens
-- Dashboard: quick overview, recent workouts, quick-add shortcut, bodyweight sparkline
-- Log Workout: form to add a past workout (default date = today) with multiple exercises and per-set inputs; image attachments and notes
-- Working out: interface to add exercises to current workout, allowing set count to be incremented and reps adjusted; image attachments and notes
-- Workout History: chronological list of workouts with filters (by date range, day-of-week)
-- Exercise Library / Exercise Detail: list of exercises; tapping an exercise shows progression (list + small chart) and ability to filter by date ranges/body part
-- Bodyweight: add/view measurements and a graph over time
-- Settings / Export: backup/export local data (e.g., JSON) and import
+### `workouts`
+- `id`: unique identifier
+- `workout_date`: editable date, defaulting to today
+- `notes`: optional workout notes
+- `created_at`: creation timestamp
+
+### `exercises`
+- `id`: unique identifier
+- `workout_id`: parent workout
+- `name`: exercise name
+- `body_part`: optional body-part text
+- `notes`: optional exercise notes
+- `position`: order within the workout
+
+An exercise row represents an occurrence in a specific workout. This preserves historical data when the same exercise is performed on multiple dates.
+
+### `exercise_sets`
+- `id`: unique identifier
+- `exercise_id`: parent exercise occurrence
+- `set_number`: ordered set number
+- `reps`: required positive integer
+- `weight`: optional numeric load
+- `notes`: optional set notes
+
+Sets are stored individually so the entry flow can support adding a set mid-workout and changing the new set's reps or weight.
+
+### `bodyweight_entries`
+- `id`: unique identifier
+- `entry_date`: editable date
+- `weight`: required numeric measurement
+- `notes`: optional notes
+
+Bodyweight is an independent entity and has no relationship to workouts.
+
+### `image_attachments`
+- `id`: unique identifier
+- `workout_id`: optional parent workout
+- `exercise_id`: optional parent exercise occurrence
+- `bodyweight_id`: optional parent bodyweight entry
+- `file_name`: local stored filename
+- `original_name`: original filename for display
+- `mime_type`: optional metadata
+- `created_at`: creation timestamp
+
+Image files are copied into local application storage. SQLite stores only metadata and references. A first-milestone attachment must belong to a workout, exercise, or bodyweight entry.
+
+## Main Screens
+
+1. **Workout Entry**
+   - Date defaults to today and can be changed.
+   - Add exercises, body parts, notes, and image attachments.
+   - Add and order sets individually.
+   - Increment set number and edit reps or weight.
+
+2. **Bodyweight Entry**
+   - Add a dated bodyweight measurement.
+   - Add optional notes and image attachments.
+   - Keep entries independent from workouts.
+
+3. **Workout History**
+   - Browse saved workouts.
+   - Sort by date, weekday, exercise name, or body part.
+   - Filter by date, weekday, exercise name, and body part.
+   - Open a workout to inspect its exercises and sets.
+
+4. **Exercise History**
+   - Select an exercise and view prior sets grouped by workout date.
+   - Filter by date range and body part.
+   - Show tabular progression data; charts are deferred.
+
+## Development Roadmap
+
+1. Update project documentation and record the approved architecture and bodyweight decision.
+2. Implement SQLite initialization, schema creation, and persistence helpers.
+3. Implement workout, exercise, set, bodyweight, and attachment repositories.
+4. Build validated workout and bodyweight entry flows.
+5. Build history sorting, filtering, and detail views.
+6. Build exercise history lookup.
+7. Add focused tests for validation, persistence, ordering, sorting, and filtering.
+8. Document local execution and testing.
+
+Deferred: graphical progression charts, frequency heatmaps, export/import, authentication, cloud storage, and mobile-specific UI.

@@ -1,83 +1,93 @@
 ## Purpose
-Main: Personal workout tracker to log workouts by date, exercise, sets, reps, and optional notes/body part/image attachments.
-Secondary: Provide quick viewing of exercise progression over time and easy filtering by workout date, exercise name, and body part.
+Main: Personal workout tracker for recording workouts by date, exercise, sets, reps, optional weight, notes, body part, and image attachments.
+Secondary: Provide quick lookup of exercise history and progression data, with filtering by date, weekday, exercise name, and body part.
 
 ## Technology Stack
-- Language: Swift
-- UI: SwiftUI
-- Persistence: Core Data
-- Local file storage: app Documents directory for image files
-- Charts: Apple Charts on iOS 16+
-- Architecture: MVVM with modular folders and simple services
-- Platform: iOS 16+
-- Dependencies: minimal; avoid external libraries unless clearly required
+- Language: Python 3.10+
+- Desktop UI: Tkinter and ttk from the Python standard library
+- Persistence: SQLite through Python's built-in `sqlite3` module
+- Attachment storage: local application data directory using `pathlib` and `shutil`
+- Architecture: small layered modules separating data access, application logic, and UI
+- Primary platform: Windows desktop
+- Future platforms: a web UI or Pythonista/iOS client may reuse the domain and persistence boundaries
+- Dependencies: standard library only unless a later requirement justifies an addition
 
 ## Architecture Decisions
-- Local-first application.
-- Single-user (personal use only).
-- No authentication initially.
-- Use Core Data as the source of truth for workouts, exercises, sets, and bodyweight entries.
-- Save images as files on disk and store file metadata in Core Data.
-- Keep the initial data model simple and easy to change instead of over-normalizing.
-- Use MVVM and modular feature folders to keep code maintainable.
-- Target iOS 16+ so Apple Charts can be used for future graphs without adding third-party packages.
+- Local-first application for one user, with no authentication or cloud services.
+- SQLite is the source of truth for structured records and is initialized through an explicit schema/migration path.
+- Image files are copied into local application storage; SQLite stores attachment metadata and references.
+- The UI must not contain database queries directly; repositories and services own persistence and validation.
+- Keep body parts as plain text initially rather than introducing a separate lookup table.
+- Keep the first implementation modular but small enough for a personal application.
+- The desktop UI is the first client; future web or mobile support is not part of the first milestone.
 
 ## Data Model
 Primary entities:
 1. Workout
-- id: UUID
-- date: Date
-- notes: optional String
-- exercises: relationship to Exercise
+- id: unique identifier
+- workout_date: user-selected date, defaulting to today
+- notes: optional workout-level notes
+- created_at: record creation timestamp
+- exercises: related exercise occurrences
 
-2. Exercise
-- id: UUID
-- name: String
-- bodyPart: optional String
-- notes: optional String
-- workout: relationship to Workout
-- sets: relationship to ExerciseSet
+2. Exercise occurrence
+- id: unique identifier
+- workout_id: parent workout
+- name: exercise name
+- body_part: optional plain-text body part
+- notes: optional exercise notes
+- position: order within the workout
+- sets: related exercise sets
 
-3. ExerciseSet
-- id: UUID
-- index: Int16
-- reps: optional Int16
-- weight: optional Double
-- notes: optional String
-- exercise: relationship to Exercise
+3. Exercise set
+- id: unique identifier
+- exercise_id: parent exercise occurrence
+- set_number: set order, allowing mid-workout increments
+- reps: positive integer repetitions
+- weight: optional numeric load for progression lookup
+- notes: optional set notes
 
-4. Bodyweight
-- id: UUID
-- date: Date
-- weight: Double
-- notes: optional String
+4. Bodyweight entry
+- id: unique identifier
+- entry_date: user-selected date
+- weight: required numeric measurement
+- notes: optional notes
+- image attachments: optional related attachments
 
-5. ImageAttachment
-- id: UUID
-- filename: String
-- mimeType: optional String
-- notes: optional String
-- relationship to a workout, exercise, or bodyweight entry when relevant
+Bodyweight is a separate entity and is not attached to workouts.
+
+5. Image attachment
+- id: unique identifier
+- workout_id: optional parent workout
+- exercise_id: optional parent exercise occurrence
+- bodyweight_id: optional parent bodyweight entry
+- file_name: local stored filename
+- original_name: original filename for display
+- mime_type: optional metadata
+- created_at: attachment timestamp
 
 Design notes:
-- A workout contains many exercises, and each exercise contains many sets.
-- Bodyweight is stored separately from workouts so it can be queried independently.
-- Body part remains a plain String initially to keep the first version simple and flexible.
-- The first scope does not include advanced analytics or heatmaps.
+- A workout contains many exercise occurrences; each occurrence contains ordered sets.
+- The same exercise name can occur in multiple workouts without overwriting history.
+- Bodyweight entries can be queried independently from workouts.
+- Attachment binary data stays in the filesystem rather than in SQLite.
+- Graphs and heatmaps are deferred; the first milestone provides structured data suitable for them later.
 
 ## Current Features
-Planned initial features:
+Planned first milestone:
 - Add a workout manually with a default or custom date.
-- Add exercises to a workout with sets and reps.
-- Track optional notes and body part for exercises.
-- Filter workout history by date, exercise name, body part, and day of week.
-- View progression by exercise over time.
-- Log bodyweight entries separately.
-- Attach images to workouts or exercises when relevant.
+- Add exercises with body part, notes, and ordered sets.
+- Enter sets individually, increment the set number, and adjust reps or weight.
+- Attach images to workouts or exercises.
+- Add bodyweight entries independently, with a date and optional image attachments.
+- Validate required fields and reject invalid numeric values before saving.
+- Persist successful submissions locally across application restarts.
+- Browse workout history sorted and filtered by date, weekday, exercise name, and body part.
+- Browse exercise history and progression data in a table-oriented view.
 
 ## Known Issues
 - None recorded yet.
-- Advanced analytics are intentionally deferred.
+- Graphical progression charts and workout-frequency heatmaps are intentionally deferred.
 
 ## Constraints
 - Prioritize simplicity and maintainability.
@@ -108,18 +118,18 @@ Planned initial features:
 8. Keep the app local-first and dependency-light.
 
 ## Coding Conventions
-- Prefer functional components.
-- Avoid unnecessary dependencies.
-- Prefer clear, maintainable SwiftUI and Core Data code.
+- Prefer standard-library solutions and clear Python types.
+- Keep UI event handling separate from database access.
+- Use parameterized SQL and explicit validation.
 - Keep features modular and easy to extend later.
-- Add comments where reasonable to help readability.
+- Add comments only where the implementation is not self-explanatory.
 
 ## Future Ideas (DO NOT IMPLEMENT YET)
-- Allow mid-set entry and set-count increments.
 - Add graphical progression over weeks, months, or years for specific exercises.
 - Add a workout-frequency heatmap.
 - Add bodyweight trend visualization.
-- Add progress-photo support for bodyweight or exercise milestones.
+- Add export/import and backup workflows.
+- Add a web or mobile client over the shared application/domain layer.
 
 You are helping me build a personal application. Your role is to act as a pragmatic software engineer and development partner.
 
@@ -129,13 +139,14 @@ Log (approved) decisions in DECISION_LOG.md with date "decision" and "reason".
 
 ## Current Task
 Implement the approved first milestone only:
-- define the Core Data model and local persistence structure,
-- build the basic workout entry flow,
+- define the SQLite schema and local persistence structure,
+- build the basic workout and bodyweight entry flows,
 - enable workout history sorting/filtering,
-- prepare the foundation for exercise progression and bodyweight tracking.
+- prepare the foundation for exercise progression.
 
 ## Acceptance Criteria
-- The app architecture matches the approved SwiftUI + Core Data plan.
-- The data model supports workouts, exercises, sets, bodyweight, and optional image references.
+- The app architecture matches the approved Python desktop-first plan.
+- The data model supports workouts, exercises, sets, bodyweight entries, and optional image references.
+- Bodyweight entries are independent of workouts.
 - Invalid values cannot be submitted.
-- Successful submission of data persists.
+- Successful submissions persist after reopening the application.
