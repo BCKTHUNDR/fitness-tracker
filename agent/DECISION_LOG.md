@@ -12,3 +12,6 @@ reason: These constraints protect historical data integrity and provide a simple
 
 2026-09-18 - decision: Keep SQLite access behind dedicated workout, bodyweight, and attachment repositories, with allowlisted history sort fields.
 reason: This preserves separation between UI and persistence, supports future clients, and prevents user-selected history sorting from becoming arbitrary SQL.
+
+2026-09-18 - decision: Make workout history start_date and end_date filters inclusive, allow either bound independently, and reject reversed windows.
+reason: Inclusive boundaries match user expectations for looking up workouts across calendar dates while explicit validation prevents ambiguous empty ranges.

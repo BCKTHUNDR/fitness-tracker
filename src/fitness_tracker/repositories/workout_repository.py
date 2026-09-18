@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import date
 
 from fitness_tracker.database import Database
 from fitness_tracker.models import Exercise, ExerciseSet, Workout
@@ -43,6 +44,8 @@ class WorkoutRepository:
 		exercise_name: str | None = None,
 		body_part: str | None = None,
 		weekday: int | None = None,
+		start_date: date | None = None,
+		end_date: date | None = None,
 		sort_by: str = "date",
 	) -> list[Workout]:
 		"""List workouts using optional filters and an allowlisted sort field."""
@@ -68,6 +71,14 @@ class WorkoutRepository:
 				raise ValueError("weekday must be between 0 and 6")
 			clauses.append("CAST(strftime('%w', w.workout_date) AS INTEGER) = ?")
 			parameters.append(weekday)
+		if start_date and end_date and start_date > end_date:
+			raise ValueError("start_date must be on or before end_date")
+		if start_date:
+			clauses.append("w.workout_date >= ?")
+			parameters.append(start_date.isoformat())
+		if end_date:
+			clauses.append("w.workout_date <= ?")
+			parameters.append(end_date.isoformat())
 
 		where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ""
 		query = f"""
