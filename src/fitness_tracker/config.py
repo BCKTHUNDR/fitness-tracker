@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-
 APPLICATION_DIRECTORY_NAME = "fitness-tracker"
 DATABASE_FILE_NAME = "fitness.sqlite3"
 ATTACHMENTS_DIRECTORY_NAME = "attachments"

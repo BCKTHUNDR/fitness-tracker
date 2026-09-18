@@ -15,3 +15,6 @@ reason: This preserves separation between UI and persistence, supports future cl
 
 2026-09-18 - decision: Make workout history start_date and end_date filters inclusive, allow either bound independently, and reject reversed windows.
 reason: Inclusive boundaries match user expectations for looking up workouts across calendar dates while explicit validation prevents ambiguous empty ranges.
+
+2026-09-18 - decision: Use separate in-memory draft input classes for workout and bodyweight entry, and save a complete workout through one transaction.
+reason: Drafts allow cancellation without database cleanup during editing, while one transaction plus defensive deletion prevents partial or orphaned workout records when saving fails.

@@ -126,6 +126,7 @@ Planned first milestone:
 - Add comments only where the implementation is not self-explanatory.
 
 ## Future Ideas (DO NOT IMPLEMENT YET)
+- Add active-workout session for incrementing sets.
 - Add graphical progression over weeks, months, or years for specific exercises.
 - Add a workout-frequency heatmap.
 - Add bodyweight trend visualization.

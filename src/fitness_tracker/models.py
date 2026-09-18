@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import TypeVar
 
+from typing_extensions import Self
 
 WorkoutType = TypeVar("WorkoutType", bound="Workout")
 
@@ -19,7 +20,7 @@ class Workout:
     id: int | None = None
 
     @classmethod
-    def from_row(cls: type[WorkoutType], row) -> WorkoutType:
+    def from_row(cls, row) -> Self:
         """Build a workout from a SQLite row."""
         return cls(
             id=row["id"],

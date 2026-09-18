@@ -7,7 +7,6 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-
 SCHEMA_VERSION = 1
 
 _SCHEMA_MIGRATIONS: dict[int, str] = {

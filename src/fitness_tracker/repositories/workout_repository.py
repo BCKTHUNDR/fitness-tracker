@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 from dataclasses import replace
 from datetime import date
 
@@ -16,18 +17,77 @@ class WorkoutRepository:
 		"""Store the database dependency used by this repository."""
 		self.database = database
 
-	def create_workout(self, workout: Workout) -> Workout:
+	def create_workout(
+		self,
+		workout: Workout,
+		*,
+		connection: sqlite3.Connection | None = None,
+	) -> Workout:
 		"""Insert a workout and return it with its generated ID."""
-		with self.database.connection() as connection:
+		if connection is not None:
 			cursor = connection.execute(
 				"INSERT INTO workouts(workout_date, notes) VALUES (?, ?)",
 				(workout.workout_date.isoformat(), workout.notes),
 			)
-			return Workout(
-				id=cursor.lastrowid,
-				workout_date=workout.workout_date,
-				notes=workout.notes,
+			return replace(workout, id=cursor.lastrowid)
+		with self.database.connection() as database_connection:
+			return self.create_workout(workout, connection=database_connection)
+
+	def add_exercise(
+		self,
+		exercise: Exercise,
+		*,
+		connection: sqlite3.Connection | None = None,
+	) -> Exercise:
+		"""Insert an exercise occurrence and return it with its generated ID."""
+		if connection is not None:
+			cursor = connection.execute(
+				"""INSERT INTO exercises
+				   (workout_id, name, body_part, notes, position)
+				   VALUES (?, ?, ?, ?, ?)""",
+				(
+					exercise.workout_id,
+					exercise.name,
+					exercise.body_part,
+					exercise.notes,
+					exercise.position,
+				),
 			)
+			return replace(exercise, id=cursor.lastrowid)
+		with self.database.connection() as database_connection:
+			return self.add_exercise(exercise, connection=database_connection)
+
+	def add_set(
+		self,
+		exercise_set: ExerciseSet,
+		*,
+		connection: sqlite3.Connection | None = None,
+	) -> ExerciseSet:
+		"""Insert one exercise set and return it with its generated ID."""
+		if connection is not None:
+			cursor = connection.execute(
+				"""INSERT INTO exercise_sets
+				   (exercise_id, set_number, reps, weight, notes)
+				   VALUES (?, ?, ?, ?, ?)""",
+				(
+					exercise_set.exercise_id,
+					exercise_set.set_number,
+					exercise_set.reps,
+					exercise_set.weight,
+					exercise_set.notes,
+				),
+			)
+			return replace(exercise_set, id=cursor.lastrowid)
+		with self.database.connection() as database_connection:
+			return self.add_set(exercise_set, connection=database_connection)
+
+	def delete_workout(self, workout_id: int, *, connection: sqlite3.Connection | None = None) -> None:
+		"""Delete a workout and its cascaded child records."""
+		if connection is not None:
+			connection.execute("DELETE FROM workouts WHERE id = ?", (workout_id,))
+			return
+		with self.database.connection() as database_connection:
+			self.delete_workout(workout_id, connection=database_connection)
 
 	def get_workout(self, workout_id: int) -> Workout | None:
 		"""Return one workout by ID or None when it does not exist."""
@@ -92,40 +152,6 @@ class WorkoutRepository:
 		with self.database.connection() as connection:
 			rows = connection.execute(query, parameters).fetchall()
 		return [Workout.from_row(row) for row in rows]
-
-	def add_exercise(self, exercise: Exercise) -> Exercise:
-		"""Insert an exercise occurrence and return it with its generated ID."""
-		with self.database.connection() as connection:
-			cursor = connection.execute(
-				"""INSERT INTO exercises
-				   (workout_id, name, body_part, notes, position)
-				   VALUES (?, ?, ?, ?, ?)""",
-				(
-					exercise.workout_id,
-					exercise.name,
-					exercise.body_part,
-					exercise.notes,
-					exercise.position,
-				),
-			)
-		return replace(exercise, id=cursor.lastrowid)
-
-	def add_set(self, exercise_set: ExerciseSet) -> ExerciseSet:
-		"""Insert one exercise set and return it with its generated ID."""
-		with self.database.connection() as connection:
-			cursor = connection.execute(
-				"""INSERT INTO exercise_sets
-				   (exercise_id, set_number, reps, weight, notes)
-				   VALUES (?, ?, ?, ?, ?)""",
-				(
-					exercise_set.exercise_id,
-					exercise_set.set_number,
-					exercise_set.reps,
-					exercise_set.weight,
-					exercise_set.notes,
-				),
-			)
-		return replace(exercise_set, id=cursor.lastrowid)
 
 	def list_exercises(self, workout_id: int) -> list[Exercise]:
 		"""Return a workout's exercises in entry order."""
