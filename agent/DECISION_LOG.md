@@ -6,3 +6,6 @@ reason: Bodyweight is approved for the initial scope, but it must remain indepen
 
 2026-09-18 - decision: Store image files locally and keep only attachment metadata and references in SQLite.
 reason: This keeps the database small while supporting offline attachments for workouts, exercises, and bodyweight entries.
+
+2026-09-18 - decision: Use a versioned SQLite schema with foreign-key enforcement, indexed lookup fields, and an attachment check requiring exactly one owner.
+reason: These constraints protect historical data integrity and provide a simple migration path while supporting the planned workout, exercise, set, bodyweight, and attachment queries.

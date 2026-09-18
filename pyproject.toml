@@ -7,7 +7,9 @@ authors = [
     { name = "BCKTHUNDR", email = "07150k1337@gmail.com" }
 ]
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "pytest>=9.1.1",
+]
 
 [project.scripts]
 fitness-tracker = "fitness_tracker:main"

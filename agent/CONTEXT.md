@@ -106,6 +106,7 @@ Planned first milestone:
 - Must work offline.
 - No paid APIs.
 - No cloud database.
+- Make one line summary within definition of functions and classes.
 
 ## Development Rules
 1. Inspect existing code before making changes.
@@ -136,6 +137,18 @@ You are helping me build a personal application. Your role is to act as a pragma
 Before writing code, briefly summarize your understanding and implementation plan.
 
 Log (approved) decisions in DECISION_LOG.md with date "decision" and "reason".
+
+Development Roadmap:
+1 Update project documentation to the Python desktop-first direction.
+2 Add the SQLite schema, initialization, and migration mechanism.
+3 Implement workout, exercise, set, and attachment data access.
+4 Build the workout entry workflow with validation and persistence.
+5 Build history sorting, filtering, and detail views.
+6 Build exercise history lookup.
+7 Add focused tests for validation, persistence, sorting, filtering, and set ordering.
+8 Document how to run and test the application.
+9 Defer graphical progression charts, workout heatmaps, export/import, and mobile-specific UI.
+
 
 ## Current Task
 Implement the approved first milestone only:
