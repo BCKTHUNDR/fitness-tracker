@@ -9,3 +9,6 @@ reason: This keeps the database small while supporting offline attachments for w
 
 2026-09-18 - decision: Use a versioned SQLite schema with foreign-key enforcement, indexed lookup fields, and an attachment check requiring exactly one owner.
 reason: These constraints protect historical data integrity and provide a simple migration path while supporting the planned workout, exercise, set, bodyweight, and attachment queries.
+
+2026-09-18 - decision: Keep SQLite access behind dedicated workout, bodyweight, and attachment repositories, with allowlisted history sort fields.
+reason: This preserves separation between UI and persistence, supports future clients, and prevents user-selected history sorting from becoming arbitrary SQL.

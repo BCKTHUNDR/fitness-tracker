@@ -44,3 +44,19 @@ class AttachmentRepository:
                 ),
             )
         return replace(attachment, id=cursor.lastrowid)
+
+    def list_for_owner(self, owner_column: str, owner_id: int) -> list[ImageAttachment]:
+        """Return attachments for one allowlisted owner column."""
+        owner_columns = {"workout_id", "exercise_id", "bodyweight_id"}
+        if owner_column not in owner_columns:
+            raise ValueError(f"Unsupported attachment owner: {owner_column}")
+
+        with self.database.connection() as connection:
+            rows = connection.execute(
+                f"""SELECT id, file_name, original_name, mime_type,
+                          workout_id, exercise_id, bodyweight_id
+                    FROM image_attachments WHERE {owner_column} = ?
+                    ORDER BY id""",
+                (owner_id,),
+            ).fetchall()
+        return [ImageAttachment(**dict(row)) for row in rows]

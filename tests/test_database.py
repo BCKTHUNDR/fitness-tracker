@@ -6,6 +6,7 @@ from fitness_tracker.database import Database
 
 
 def test_initialize_creates_schema_and_is_idempotent(tmp_path):
+    """Create the schema once and safely reinitialize it."""
     database = Database(tmp_path / "fitness.sqlite3")
 
     database.initialize()
@@ -31,6 +32,7 @@ def test_initialize_creates_schema_and_is_idempotent(tmp_path):
 
 
 def test_foreign_keys_and_attachment_owner_constraint_are_enforced(tmp_path):
+    """Reject orphaned records and attachments without exactly one owner."""
     database = Database(tmp_path / "fitness.sqlite3")
     database.initialize()
 
