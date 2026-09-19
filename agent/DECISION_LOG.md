@@ -18,3 +18,6 @@ reason: Inclusive boundaries match user expectations for looking up workouts acr
 
 2026-09-18 - decision: Use separate in-memory draft input classes for workout and bodyweight entry, and save a complete workout through one transaction.
 reason: Drafts allow cancellation without database cleanup during editing, while one transaction plus defensive deletion prevents partial or orphaned workout records when saving fails.
+
+2026-09-19 - decision: Use the existing WorkoutDraft structure for both new and edited workouts by adding optional IDs to workouts, exercises, and sets.
+reason: ID-bearing drafts allow retained rows and attachment relationships to be updated in place, while omitted child IDs identify records to delete without introducing a separate WorkoutEditDraft type.

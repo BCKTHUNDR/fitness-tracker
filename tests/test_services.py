@@ -1,10 +1,13 @@
 """Application service behavior tests."""
 
+from dataclasses import replace
 from datetime import date, datetime
 
 import pytest
 
 from fitness_tracker.database import Database
+from fitness_tracker.models import ImageAttachment
+from fitness_tracker.repositories.attachment_repository import AttachmentRepository
 from fitness_tracker.services.bodyweight_service import BodyweightService
 from fitness_tracker.services.inputs import (
 	BodyweightDraft,
@@ -107,3 +110,101 @@ def test_bodyweight_service_defaults_date_and_rejects_invalid_values(tmp_path):
 	for invalid_weight in (0, -1, float("nan"), float("inf")):
 		with pytest.raises(ValueError, match="bodyweight"):
 			service.save_entry(BodyweightDraft(invalid_weight))
+
+
+def test_workout_draft_can_update_existing_rows_add_children_and_remove_children(tmp_path):
+	"""Edit a loaded draft while preserving retained record IDs."""
+	database = Database(tmp_path / "fitness.sqlite3")
+	database.initialize()
+	service = WorkoutService(database)
+	saved = service.save_workout(
+		WorkoutDraft(
+			workout_date=date(2026, 9, 18),
+			exercises=(
+				ExerciseInput("Squat", sets=(SetInput(10, 80.0), SetInput(8, 85.0)), body_part="Legs"),
+				ExerciseInput("Lunge", sets=(SetInput(10, 20.0),), body_part="Legs"),
+			),
+			notes="Original",
+		)
+	)
+
+	draft = service.load_workout_for_edit(saved.id)
+	first_exercise = draft.exercises[0]
+	first_set = first_exercise.sets[0]
+	updated = replace(
+		draft,
+		workout_date=date(2026, 9, 19),
+		notes="Updated",
+		exercises=(
+			replace(
+				first_exercise,
+				name="Front Squat",
+				sets=(replace(first_set, reps=12), SetInput(6, 90.0)),
+			),
+		),
+	)
+
+	service.save_workout(updated)
+	loaded = service.load_workout_for_edit(saved.id)
+	assert loaded.workout_date == date(2026, 9, 19)
+	assert loaded.notes == "Updated"
+	assert len(loaded.exercises) == 1
+	assert loaded.exercises[0].name == "Front Squat"
+	assert loaded.exercises[0].id == first_exercise.id
+	assert [item.reps for item in loaded.exercises[0].sets] == [12, 6]
+	assert loaded.exercises[0].sets[0].id == first_set.id
+
+
+def test_workout_edit_preserves_attachment_metadata(tmp_path):
+	"""Keep attachments linked when their owned exercise is edited."""
+	database = Database(tmp_path / "fitness.sqlite3")
+	database.initialize()
+	service = WorkoutService(database)
+	saved = service.save_workout(
+		WorkoutDraft(exercises=(ExerciseInput("Squat", sets=(SetInput(5),)),))
+	)
+	draft = service.load_workout_for_edit(saved.id)
+	exercise_id = draft.exercises[0].id
+	attachment_repository = AttachmentRepository(database)
+	attachment = attachment_repository.create(
+		ImageAttachment("squat.jpg", "squat.jpg", exercise_id=exercise_id)
+	)
+
+	service.save_workout(replace(draft, exercises=(replace(draft.exercises[0], name="Back Squat"),)))
+
+	assert attachment_repository.list_for_owner("exercise_id", exercise_id) == [attachment]
+
+
+def test_workout_edit_rolls_back_all_changes_on_failure(tmp_path, monkeypatch):
+	"""Restore the original workout when an edit fails partway through."""
+	database = Database(tmp_path / "fitness.sqlite3")
+	database.initialize()
+	service = WorkoutService(database)
+	saved = service.save_workout(
+		WorkoutDraft(exercises=(ExerciseInput("Squat", sets=(SetInput(5),)),), notes="Original")
+	)
+	draft = service.load_workout_for_edit(saved.id)
+	original_update_set = service.repository.update_set
+
+	def fail_after_update(exercise_set, *, connection):
+		original_update_set(exercise_set, connection=connection)
+		raise RuntimeError("simulated edit failure")
+
+	monkeypatch.setattr(service.repository, "update_set", fail_after_update)
+	updated = replace(
+		draft,
+		notes="Changed",
+		exercises=(
+			replace(
+				draft.exercises[0],
+				sets=(replace(draft.exercises[0].sets[0], reps=99),),
+			),
+		),
+	)
+
+	with pytest.raises(RuntimeError, match="simulated"):
+		service.save_workout(updated)
+
+	restored = service.load_workout_for_edit(saved.id)
+	assert restored.notes == "Original"
+	assert restored.exercises[0].sets[0].reps == 5

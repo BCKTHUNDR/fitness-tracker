@@ -13,6 +13,7 @@ class SetInput:
 	reps: int
 	weight: float | None = None
 	notes: str | None = None
+	id: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +24,7 @@ class ExerciseInput:
 	sets: tuple[SetInput, ...] = field(default_factory=tuple)
 	body_part: str | None = None
 	notes: str | None = None
+	id: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,6 +34,7 @@ class WorkoutDraft:
 	workout_date: date | None = None
 	exercises: tuple[ExerciseInput, ...] = field(default_factory=tuple)
 	notes: str | None = None
+	id: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

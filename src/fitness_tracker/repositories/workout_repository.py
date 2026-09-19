@@ -89,6 +89,69 @@ class WorkoutRepository:
 		with self.database.connection() as database_connection:
 			self.delete_workout(workout_id, connection=database_connection)
 
+	def update_workout(
+		self,
+		workout: Workout,
+		*,
+		connection: sqlite3.Connection,
+	) -> None:
+		"""Update an existing workout within a caller-owned transaction."""
+		if workout.id is None:
+			raise ValueError("workout ID is required for an update")
+		cursor = connection.execute(
+			"UPDATE workouts SET workout_date = ?, notes = ? WHERE id = ?",
+			(workout.workout_date.isoformat(), workout.notes, workout.id),
+		)
+		if cursor.rowcount != 1:
+			raise ValueError(f"workout {workout.id} does not exist")
+
+	def update_exercise(self, exercise: Exercise, *, connection: sqlite3.Connection) -> None:
+		"""Update an existing exercise within a caller-owned transaction."""
+		if exercise.id is None:
+			raise ValueError("exercise ID is required for an update")
+		cursor = connection.execute(
+			"""UPDATE exercises SET name = ?, body_part = ?, notes = ?, position = ?
+			   WHERE id = ? AND workout_id = ?""",
+			(
+				exercise.name,
+				exercise.body_part,
+				exercise.notes,
+				exercise.position,
+				exercise.id,
+				exercise.workout_id,
+			),
+		)
+		if cursor.rowcount != 1:
+			raise ValueError(f"exercise {exercise.id} does not belong to workout {exercise.workout_id}")
+
+	def update_set(self, exercise_set: ExerciseSet, *, connection: sqlite3.Connection) -> None:
+		"""Update an existing set within a caller-owned transaction."""
+		if exercise_set.id is None:
+			raise ValueError("set ID is required for an update")
+		cursor = connection.execute(
+			"""UPDATE exercise_sets
+			   SET set_number = ?, reps = ?, weight = ?, notes = ?
+			   WHERE id = ? AND exercise_id = ?""",
+			(
+				exercise_set.set_number,
+				exercise_set.reps,
+				exercise_set.weight,
+				exercise_set.notes,
+				exercise_set.id,
+				exercise_set.exercise_id,
+			),
+		)
+		if cursor.rowcount != 1:
+			raise ValueError(f"set {exercise_set.id} does not belong to exercise {exercise_set.exercise_id}")
+
+	def delete_exercise(self, exercise_id: int, *, connection: sqlite3.Connection) -> None:
+		"""Delete an exercise and its cascaded sets within a transaction."""
+		connection.execute("DELETE FROM exercises WHERE id = ?", (exercise_id,))
+
+	def delete_set(self, set_id: int, *, connection: sqlite3.Connection) -> None:
+		"""Delete one set within a caller-owned transaction."""
+		connection.execute("DELETE FROM exercise_sets WHERE id = ?", (set_id,))
+
 	def get_workout(self, workout_id: int) -> Workout | None:
 		"""Return one workout by ID or None when it does not exist."""
 		with self.database.connection() as connection:
