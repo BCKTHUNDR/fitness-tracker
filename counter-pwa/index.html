@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="manifest" href="manifest.json">
+
+    <title>Python Counter</title>
+</head>
+
+<body>
+
+    <button id="plusButton">+1</button>
+    <button id="minusButton">-1</button>
+
+    <h1 id="value">Loading...</h1>
+
+
+    <!-- ============================= -->
+    <!-- IndexedDB                     -->
+    <!-- ============================= -->
+
+    <script>
+
+        const DB_NAME = "CounterDatabase";
+        const STORE_NAME = "counter";
+
+
+        function openDatabase() {
+
+            return new Promise((resolve, reject) => {
+
+                const request = indexedDB.open(DB_NAME, 1);
+
+
+                request.onupgradeneeded = function(event) {
+
+                    const db = event.target.result;
+
+                    db.createObjectStore(STORE_NAME);
+
+                };
+
+
+                request.onsuccess = function(event) {
+
+                    resolve(event.target.result);
+
+                };
+
+
+                request.onerror = function(event) {
+
+                    reject(event.target.error);
+
+                };
+
+            });
+
+        }
+
+
+        window.getCounterFromDB = async function() {
+
+            const db = await openDatabase();
+
+            return new Promise((resolve, reject) => {
+
+                const transaction =
+                    db.transaction(STORE_NAME, "readonly");
+
+                const store =
+                    transaction.objectStore(STORE_NAME);
+
+                const request =
+                    store.get("value");
+
+                request.onsuccess = function() {
+
+                    // Always return a JavaScript number.
+                    // If nothing is stored yet, return 0.
+                    const value = request.result;
+
+                    if (value === undefined || value === null) {
+                        resolve(0);
+                    } else {
+                        resolve(Number(value));
+                    }
+
+                };
+
+                request.onerror = function() {
+                    reject(request.error);
+                };
+
+            });
+
+        };
+
+
+        window.setCounterInDB = async function(value) {
+
+            const db = await openDatabase();
+
+            return new Promise((resolve, reject) => {
+
+                const transaction =
+                    db.transaction(STORE_NAME, "readwrite");
+
+                const store =
+                    transaction.objectStore(STORE_NAME);
+
+                const request =
+                    store.put(value, "value");
+
+
+                request.onsuccess = function() {
+
+                    resolve();
+
+                };
+
+
+                request.onerror = function() {
+
+                    reject(request.error);
+
+                };
+
+            });
+
+        };
+
+    </script>
+
+
+    <!-- ============================= -->
+    <!-- Pyodide                       -->
+    <!-- ============================= -->
+
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.29.3/full/pyodide.js"></script>
+
+
+    <script>
+
+        let pyodide;
+
+
+        async function startApp() {
+
+            console.log("Starting Pyodide...");
+
+            pyodide = await loadPyodide();
+
+            console.log("Pyodide loaded");
+
+
+            // Load Python file
+            const response = await fetch("app.py");
+
+            const pythonCode = await response.text();
+
+            await pyodide.runPythonAsync(pythonCode);
+
+            console.log("Python loaded");
+
+
+            // Initialize database
+            await pyodide.runPythonAsync(
+                "await initialize()"
+            );
+
+            console.log("Database initialized");
+
+
+            // Display initial value
+            await updateDisplay();
+
+            console.log("App ready");
+
+        }
+
+
+        async function updateDisplay() {
+
+            const value =
+                await pyodide.runPythonAsync(
+                    "await get_counter()"
+                );
+
+            console.log("Database value:", value);
+
+            document.getElementById("value").textContent = value;
+
+        }
+
+
+        async function changeCounter(amount) {
+
+            console.log("Changing counter by:", amount);
+
+            await pyodide.runPythonAsync(
+                `await change_counter(${amount})`
+            );
+
+            await updateDisplay();
+
+        }
+
+
+        // Set up button events
+        document
+            .getElementById("plusButton")
+            .addEventListener(
+                "click",
+                () => changeCounter(1)
+            );
+
+
+        document
+            .getElementById("minusButton")
+            .addEventListener(
+                "click",
+                () => changeCounter(-1)
+            );
+
+
+        // Start application
+        startApp();
+
+    </script>
+
+
+    <!-- ============================= -->
+    <!-- Service Worker                -->
+    <!-- ============================= -->
+
+    <script>
+
+        if ("serviceWorker" in navigator) {
+
+            navigator.serviceWorker.register("sw.js")
+                .then(() => {
+                    console.log("Service worker registered");
+                })
+                .catch(error => {
+                    console.error(
+                        "Service worker error:",
+                        error
+                    );
+                });
+
+        }
+
+    </script>
+
+</body>
+
+</html>
