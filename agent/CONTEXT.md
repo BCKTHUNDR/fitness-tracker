@@ -10,7 +10,8 @@ Secondary: Provide quick lookup of exercise history and progression data, with f
 - Architecture: small layered modules separating data access, application logic, and UI
 - Primary platform: Windows desktop
 - Future platforms: a web UI or Pythonista/iOS client may reuse the domain and persistence boundaries
-- Dependencies: standard library only unless a later requirement justifies an addition
+- Application dependencies: Python standard library only
+- Development dependency: pytest through `uv run pytest`
 
 ## Architecture Decisions
 - Local-first application for one user, with no authentication or cloud services.
@@ -20,6 +21,10 @@ Secondary: Provide quick lookup of exercise history and progression data, with f
 - Keep body parts as plain text initially rather than introducing a separate lookup table.
 - Keep the first implementation modular but small enough for a personal application.
 - The desktop UI is the first client; future web or mobile support is not part of the first milestone.
+- Use immutable input drafts for service boundaries; an ID-bearing `WorkoutDraft` supports both creation and editing.
+- Save complete workout aggregates transactionally; cancellation before save makes no database changes.
+- Preserve existing workout, exercise, and set IDs during edits so attachment relationships remain valid.
+- Use a minimal Tkinter/ttk UI with a VS Code-like dark palette.
 
 ## Data Model
 Primary entities:
@@ -72,18 +77,25 @@ Design notes:
 - Bodyweight entries can be queried independently from workouts.
 - Attachment binary data stays in the filesystem rather than in SQLite.
 - Graphs and heatmaps are deferred; the first milestone provides structured data suitable for them later.
+- `WorkoutDraft`, `ExerciseInput`, and `SetInput` may carry optional IDs. Missing IDs represent new records; omitted existing child IDs are removed during an edit.
 
 ## Current Features
-Planned first milestone:
-- Add a workout manually with a default or custom date.
-- Add exercises with body part, notes, and ordered sets.
-- Enter sets individually, increment the set number, and adjust reps or weight.
-- Attach images to workouts or exercises.
-- Add bodyweight entries independently, with a date and optional image attachments.
-- Validate required fields and reject invalid numeric values before saving.
-- Persist successful submissions locally across application restarts.
-- Browse workout history sorted and filtered by date, weekday, exercise name, and body part.
-- Browse exercise history and progression data in a table-oriented view.
+Implemented:
+- SQLite schema versioning, initialization, foreign-key enforcement, indexes, and attachment ownership constraints.
+- Repository persistence for workouts, exercises, sets, bodyweight entries, and attachment metadata.
+- Workout history filters for exercise name, body part, weekday, and inclusive start/end date windows.
+- Workout creation service with validation, transactional persistence, and rollback/orphan cleanup.
+- Bodyweight service with date defaults and positive finite-weight validation.
+- ID-aware workout editing that updates retained rows, inserts new children, deletes omitted exercises/sets, and preserves attachments.
+- Minimal dark-friendly Tkinter workout entry form for creating and editing workouts, including dynamic exercise and set rows.
+- Focused automated tests for persistence, validation, ordering, filtering, editing, attachment preservation, and rollback.
+
+Planned first-milestone follow-up:
+- Integrate the workout entry form into the main application window.
+- Build workout history and detail views.
+- Add the bodyweight entry UI.
+- Add attachment file-copy workflow and UI controls.
+- Build exercise history and progression lookup.
 
 ## Known Issues
 - None recorded yet.
@@ -126,12 +138,12 @@ Planned first milestone:
 - Add comments only where the implementation is not self-explanatory.
 
 ## Future Ideas (DO NOT IMPLEMENT YET)
-- Add active-workout session for incrementing sets.
 - Add graphical progression over weeks, months, or years for specific exercises.
 - Add a workout-frequency heatmap.
 - Add bodyweight trend visualization.
 - Add export/import and backup workflows.
 - Add a web or mobile client over the shared application/domain layer.
+- Add an autosaved active-workout session for crash recovery and mid-workout entry.
 
 You are helping me build a personal application. Your role is to act as a pragmatic software engineer and development partner.
 
@@ -140,23 +152,24 @@ Before writing code, briefly summarize your understanding and implementation pla
 Log (approved) decisions in DECISION_LOG.md with date "decision" and "reason".
 
 Development Roadmap:
-1 Update project documentation to the Python desktop-first direction.
-2 Add the SQLite schema, initialization, and migration mechanism.
-3 Implement workout, exercise, set, and attachment data access.
-4 Build the workout entry workflow with validation and persistence.
-5 Build history sorting, filtering, and detail views.
+1 Update project documentation to the Python desktop-first direction. (complete)
+2 Add the SQLite schema, initialization, and migration mechanism. (complete)
+3 Implement workout, exercise, set, and attachment data access. (complete)
+4 Build the workout entry workflow with validation and persistence. (partially complete: services and workout entry UI implemented; bodyweight UI and attachment workflow remain)
+5 Build history sorting, filtering, and detail views. (next)
 6 Build exercise history lookup.
-7 Add focused tests for validation, persistence, sorting, filtering, and set ordering.
+7 Add focused tests for validation, persistence, sorting, filtering, set ordering, and editing. (mostly complete; expand with UI tests as UI grows)
 8 Document how to run and test the application.
-9 Defer graphical progression charts, workout heatmaps, export/import, and mobile-specific UI.
+9 Defer graphical progression charts, workout heatmaps, export/import, autosaved active-workout recovery, and mobile-specific UI.
 
 
 ## Current Task
-Implement the approved first milestone only:
-- define the SQLite schema and local persistence structure,
-- build the basic workout and bodyweight entry flows,
-- enable workout history sorting/filtering,
-- prepare the foundation for exercise progression.
+Continue the approved first milestone:
+- integrate the workout entry UI into the application shell,
+- build workout history and detail views,
+- implement the bodyweight entry UI,
+- implement attachment file storage and entry controls,
+- build exercise history lookup and progression foundations.
 
 ## Acceptance Criteria
 - The app architecture matches the approved Python desktop-first plan.
@@ -164,3 +177,5 @@ Implement the approved first milestone only:
 - Bodyweight entries are independent of workouts.
 - Invalid values cannot be submitted.
 - Successful submissions persist after reopening the application.
+- Editing a saved workout preserves retained record IDs and attachment relationships.
+- Failed create/edit saves leave no partial workout changes.

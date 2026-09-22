@@ -1,2 +1,11 @@
+"""Public application entry point."""
+
+from fitness_tracker.app import run
+
+
 def main() -> None:
-    print("Hello from fitness-tracker!")
+    """Start the fitness tracker desktop application."""
+    run()
+
+if __name__ == "__main__":
+	run()

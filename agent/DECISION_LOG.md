@@ -21,3 +21,6 @@ reason: Drafts allow cancellation without database cleanup during editing, while
 
 2026-09-19 - decision: Use the existing WorkoutDraft structure for both new and edited workouts by adding optional IDs to workouts, exercises, and sets.
 reason: ID-bearing drafts allow retained rows and attachment relationships to be updated in place, while omitted child IDs identify records to delete without introducing a separate WorkoutEditDraft type.
+
+2026-09-19 - decision: Use a minimal Tkinter/ttk workout entry form with a VS Code-like dark palette, dynamic exercise and set rows, and service callbacks for save/cancel.
+reason: The desktop UI should remain simple, offline, and dark-mode friendly while keeping form state separate from persistence and supporting both new and edited workouts.
